@@ -1,0 +1,6 @@
+voiceenv/
+output/
+__pycache__/
+*.log
+.vscode/
+.idea/
