@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Windows.Forms
 
 $root = 'C:\StudioVoice'
 $python = Join-Path $root 'voiceenv\Scripts\python.exe'
@@ -27,31 +27,37 @@ function Get-StudioVoiceProcesses {
 }
 
 if (Test-StudioVoice) {
-    Start-Process 'http://127.0.0.1:7860/'
     exit 0
 }
 
+# Clear any stale processes first
+$stale = @(Get-StudioVoiceProcesses)
+if ($stale) {
+    $stale | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+}
+
 if (-not (Test-Path $python)) {
+    Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show('Studio Voice Python environment was not found.', 'Studio Voice') | Out-Null
     exit 1
 }
 
-$existing = @(Get-StudioVoiceProcesses)
-if (-not $existing) {
-    Start-Process -FilePath $python -ArgumentList ('"' + $script + '"') -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $err | Out-Null
-}
+# Start the Python process
+Start-Process -FilePath $python -ArgumentList ('"' + $script + '"') -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $err | Out-Null
 
-for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 750
+# Wait up to 30 seconds for the server to be ready
+$started = $false
+for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Seconds 1
     if (Test-StudioVoice) {
-        Start-Process 'http://127.0.0.1:7860/'
-        exit 0
+        $started = $true
+        break
     }
 }
 
-$stale = @(Get-StudioVoiceProcesses)
-if ($stale.Count -gt 1) {
-    $stale | Sort-Object ProcessId | Select-Object -Skip 1 | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+if (-not $started) {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show('Studio Voice failed to start after 30 seconds. Check logs for details.', 'Studio Voice') | Out-Null
 }
 
-Start-Process 'http://127.0.0.1:7860/'
+exit 0

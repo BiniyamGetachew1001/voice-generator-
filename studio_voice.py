@@ -953,5 +953,39 @@ start_background_warmup()
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=False)
+    import webview
+    import webbrowser
+    
+    # Check if a server is already running to avoid port conflicts
+    try:
+        # Launch Gradio server in the background
+        _, _, share_url = demo.launch(server_name="127.0.0.1", server_port=7860, inbrowser=False, prevent_thread_lock=True)
+        
+        try:
+            # Create a native window pointing to the local Gradio server
+            print("Creating desktop window...")
+            window = webview.create_window(
+                "Studio Voice",
+                "http://127.0.0.1:7860",
+                width=1280,
+                height=920,
+                background_color="#030303",
+                min_size=(800, 600)
+            )
+            
+            # Start the webview (this blocks until the window is closed)
+            print("Starting desktop GUI...")
+            webview.start()
+        except Exception as e:
+            # Fallback to browser if webview fails (e.g., missing dependencies)
+            print(f"Native window failed to start: {e}")
+            webbrowser.open("http://127.0.0.1:7860")
+            # Wait for user to manually close the server or just keep it running
+            threading.Event().wait() 
+            
+    except Exception as e:
+        print(f"Failed to launch Studio Voice server: {e}")
+    finally:
+        demo.close()
+        os._exit(0)
 
