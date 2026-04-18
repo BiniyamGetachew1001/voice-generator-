@@ -1,0 +1,7 @@
+gradio
+numpy
+soundfile
+torch>=2.0.0
+espeakng-loader
+kokoro
+pywebview
